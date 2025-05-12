@@ -1,8 +1,16 @@
 import 'package:flutter/material.dart';
 import 'screens/main_navigation_screen.dart'; // Đảm bảo đường dẫn này đúng với cấu trúc thư mục của bạn
+import 'package:flutter/services.dart';
 
 void main() {
   runApp(MyApp());
+  // Đặt màu thanh trạng thái
+  SystemChrome.setSystemUIOverlayStyle(
+    SystemUiOverlayStyle(
+      statusBarColor: Color(0xFFF4F6F8), // Màu nền của thanh trạng thái
+      statusBarIconBrightness: Brightness.dark, // Màu icon (sáng hoặc tối)
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {
