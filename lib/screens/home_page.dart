@@ -1,6 +1,42 @@
 import 'package:flutter/material.dart';
 import 'dart:math' as math; // Cho màu ngẫu nhiên (tùy chọn)
 
+// --- TẠO CUSTOM SLIVERPERSISTENTHEADERDELEGATE CHO CATEGORIES ---
+class CategoriesHeaderDelegate extends SliverPersistentHeaderDelegate {
+  final double minHeight;
+  final double maxHeight;
+  final Widget child;
+
+  CategoriesHeaderDelegate({
+    required this.minHeight,
+    required this.maxHeight,
+    required this.child,
+  });
+
+  @override
+  double get minExtent => minHeight;
+
+  @override
+  double get maxExtent => math.max(maxHeight, minHeight);
+
+  @override
+  Widget build(
+      BuildContext context, double shrinkOffset, bool overlapsContent) {
+    // shrinkOffset: giá trị từ 0 (khi maxExtent) đến (maxExtent - minExtent) (khi minExtent)
+    // overlapsContent: true nếu header đang che phủ nội dung bên dưới nó
+    return SizedBox.expand(child: child);
+  }
+
+  @override
+  bool shouldRebuild(CategoriesHeaderDelegate oldDelegate) {
+    return maxHeight != oldDelegate.maxHeight ||
+        minHeight != oldDelegate.minHeight ||
+        child != oldDelegate.child;
+  }
+}
+// --- KẾT THÚC CUSTOM DELEGATE ---
+
+
 class HomePage extends StatefulWidget {
   final Function(String productName, String imagePlaceholder) onNavigateToProductDetails;
 
@@ -37,11 +73,7 @@ class _HomePageState extends State<HomePage> {
   void initState() {
     super.initState();
     _scrollController.addListener(() {
-      // Giả sử chiều cao mở rộng của SliverAppBar khoảng 150 và chiều cao thu gọn (toolbar) khoảng 56 (kToolbarHeight)
-      // Chúng ta muốn biết khi nào phần flexibleSpace đã cuộn gần hết
-      // Offset khi SliverAppBar chỉ còn lại phần title/actions (đã pinned)
-      // Độ cao của phần tiêu đề lớn "Daily Grocery Food" + khoảng trống
-      const double expandedHeaderHeight = 120.0; // Ước lượng chiều cao của phần header lớn
+      const double expandedHeaderHeight = 120.0;
       if (_scrollController.hasClients &&
           _scrollController.offset > (expandedHeaderHeight - kToolbarHeight)) {
         if (!_isAppBarCollapsed) {
@@ -66,7 +98,6 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildCategoryChip(String label, int index) {
-    // ... (code không đổi)
     bool isSelected = _selectedCategoryIndex == index;
     return GestureDetector(
       onTap: () {
@@ -104,7 +135,6 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildProductCard(BuildContext context, String name, String cal, String price, String imageEmoji) {
-    // ... (code không đổi)
     return GestureDetector(
       onTap: () {
         widget.onNavigateToProductDetails(name, imageEmoji);
@@ -160,30 +190,56 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  // Widget cho phần Categories để truyền vào delegate
+  Widget _buildCategoriesSection() {
+    return Container(
+      color: Theme.of(context).scaffoldBackgroundColor, // Màu nền cho header dính
+      padding: const EdgeInsets.only(top: 16.0, left: 16.0, right: 16.0, bottom: 12.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center, // Căn giữa theo chiều dọc
+        children: [
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            physics: BouncingScrollPhysics(), // Hoặc ClampingScrollPhysics nếu không muốn hiệu ứng nảy
+            child: Row(
+              children: _categories.asMap().entries.map((entry) {
+                int idx = entry.key;
+                Map<String, String> category = entry.value;
+                return _buildCategoryChip(category['name']!, idx);
+              }).toList(),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+
   @override
   Widget build(BuildContext context) {
-    // Chiều cao của BottomNavBar, bạn cần lấy giá trị này từ MainNavigationScreen
-    // hoặc định nghĩa một hằng số chung. Tạm thời dùng giá trị cố định.
-    const double bottomNavBarHeight = kBottomNavigationBarHeight + 20.0; // Ví dụ
+    const double bottomNavBarHeight = kBottomNavigationBarHeight + 20.0;
     const double bodyBorderRadius = 30.0;
+
+    // Ước lượng chiều cao của phần Categories
+    const double categoriesSectionHeight = 70;
 
     return CustomScrollView(
       controller: _scrollController,
       physics: BouncingScrollPhysics(),
       slivers: <Widget>[
         SliverAppBar(
-          backgroundColor: Theme.of(context).scaffoldBackgroundColor, // Màu nền của AppBar khi thu gọn
-          expandedHeight: 160.0, // Chiều cao khi mở rộng (chứa "Daily Grocery Food")
-          pinned: true, // Ghim AppBar lại khi cuộn
-          elevation: _isAppBarCollapsed ? 2.0 : 0.0, // Thêm shadow khi thu gọn
-          automaticallyImplyLeading: false, // Tắt nút back mặc định
+          backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+          expandedHeight: 160.0,
+          pinned: true,
+          elevation: _isAppBarCollapsed ? 2.0 : 0.0,
+          automaticallyImplyLeading: false,
           flexibleSpace: FlexibleSpaceBar(
-            // titlePadding: EdgeInsets.zero, // Bỏ padding mặc định của title
-            background: Padding( // Phần header lớn
-              padding: const EdgeInsets.only(left: 16.0, right: 16.0, top: 40.0, bottom: 10.0), // Điều chỉnh padding
+            background: Padding(
+              padding: const EdgeInsets.only(left: 16.0, right: 16.0, top: 5.0, bottom: 5.0),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                crossAxisAlignment: CrossAxisAlignment.end, // Căn cuối để gần với phần content
+                crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Column(
                     mainAxisSize: MainAxisSize.min,
@@ -199,21 +255,18 @@ class _HomePageState extends State<HomePage> {
                       ),
                     ],
                   ),
-                  // Icon tìm kiếm sẽ hiển thị trong actions khi thu gọn
                 ],
               ),
             ),
-            // Phần title này sẽ chỉ hiển thị khi AppBar thu gọn đáng kể (nếu có)
-            // Bạn có thể để trống hoặc hiển thị một tiêu đề nhỏ hơn
             title: _isAppBarCollapsed
                 ? Text(
               "Grocery Food",
               style: TextStyle(fontSize: 18, color: Colors.black87, fontWeight: FontWeight.bold),
             )
-                : null, // Để trống khi chưa thu gọn hẳn
-            centerTitle: true, // Căn giữa title thu gọn
+                : null,
+            centerTitle: true,
           ),
-          actions: <Widget>[ // Actions sẽ luôn hiển thị
+          actions: <Widget>[
             IconButton(
               icon: Icon(Icons.search, size: 28, color: Colors.black54),
               onPressed: () {
@@ -224,41 +277,33 @@ class _HomePageState extends State<HomePage> {
           ],
         ),
 
-        // Phần Categories
+        // --- SỬ DỤNG SLIVERPERSISTENTHEADER CHO CATEGORIES ---
+        SliverPersistentHeader(
+          pinned: true, // QUAN TRỌNG: để header này dính lại
+          delegate: CategoriesHeaderDelegate(
+            minHeight: categoriesSectionHeight, // Chiều cao khi đã dính
+            maxHeight: categoriesSectionHeight, // Chiều cao ban đầu
+            // Nếu bạn muốn nó có thể co giãn nhẹ, maxHeight có thể lớn hơn minHeight một chút
+            child: _buildCategoriesSection(), // Widget chứa Categories
+          ),
+        ),
+        // --- KẾT THÚC SLIVERPERSISTENTHEADER ---
+
+        // Phần tiêu đề "Popular Fruits" và nút "See all"
         SliverToBoxAdapter(
           child: Padding(
-            padding: const EdgeInsets.only(top: 20.0, left: 16.0, right: 16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            padding: const EdgeInsets.only(top: 15.0, left: 16.0, right: 16.0, bottom: 15.0), // Thêm padding trên
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text("Categories", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87)),
-                SizedBox(height: 12),
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  physics: BouncingScrollPhysics(),
-                  child: Row(
-                    children: _categories.asMap().entries.map((entry) {
-                      int idx = entry.key;
-                      Map<String, String> category = entry.value;
-                      return _buildCategoryChip(category['name']!, idx);
-                    }).toList(),
-                  ),
+                Text(
+                  "Popular ${_categories[_selectedCategoryIndex]['name']}",
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black87),
                 ),
-                SizedBox(height: 30),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      "Popular ${_categories[_selectedCategoryIndex]['name']}",
-                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black87),
-                    ),
-                    TextButton(
-                      onPressed: () {},
-                      child: Text("See all", style: TextStyle(color: Theme.of(context).hintColor, fontWeight: FontWeight.w500)),
-                    ),
-                  ],
+                TextButton(
+                  onPressed: () {},
+                  child: Text("See all", style: TextStyle(color: Theme.of(context).hintColor, fontWeight: FontWeight.w500)),
                 ),
-                SizedBox(height: 15),
               ],
             ),
           ),
@@ -290,8 +335,6 @@ class _HomePageState extends State<HomePage> {
           ),
         ),
 
-        // Padding ở dưới cùng để không bị che bởi BottomNavigationBar
-        // (cần tính toán chính xác dựa trên chiều cao NavBar và bo góc của body)
         SliverToBoxAdapter(
           child: SizedBox(height: bottomNavBarHeight + bodyBorderRadius + MediaQuery.of(context).padding.bottom + 20),
         ),
