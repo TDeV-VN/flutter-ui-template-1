@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:math' as math; // Cho màu ngẫu nhiên (tùy chọn)
 
 class HomePage extends StatefulWidget {
   final Function(String productName, String imagePlaceholder) onNavigateToProductDetails;
@@ -12,6 +13,8 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   final Color _primaryColor = const Color(0xFF1F2C4C);
   int _selectedCategoryIndex = 0;
+  final ScrollController _scrollController = ScrollController();
+  bool _isAppBarCollapsed = false;
 
   final List<Map<String, String>> _categories = [
     {"name": "Fruits"},
@@ -21,7 +24,6 @@ class _HomePageState extends State<HomePage> {
     {"name": "Bakery"},
   ];
 
-  // Dữ liệu sản phẩm mẫu
   final List<Map<String, String>> _products = [
     {"name": "Apple", "cal": "55 Cal", "price": "\$10.45/kg", "image": "🍎"},
     {"name": "Orange", "cal": "75 Cal", "price": "\$14.75/kg", "image": "🍊"},
@@ -31,7 +33,40 @@ class _HomePageState extends State<HomePage> {
     {"name": "Grapes", "cal": "69 Cal", "price": "\$12.0/kg", "image": "🍇"},
   ];
 
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(() {
+      // Giả sử chiều cao mở rộng của SliverAppBar khoảng 150 và chiều cao thu gọn (toolbar) khoảng 56 (kToolbarHeight)
+      // Chúng ta muốn biết khi nào phần flexibleSpace đã cuộn gần hết
+      // Offset khi SliverAppBar chỉ còn lại phần title/actions (đã pinned)
+      // Độ cao của phần tiêu đề lớn "Daily Grocery Food" + khoảng trống
+      const double expandedHeaderHeight = 120.0; // Ước lượng chiều cao của phần header lớn
+      if (_scrollController.hasClients &&
+          _scrollController.offset > (expandedHeaderHeight - kToolbarHeight)) {
+        if (!_isAppBarCollapsed) {
+          setState(() {
+            _isAppBarCollapsed = true;
+          });
+        }
+      } else {
+        if (_isAppBarCollapsed) {
+          setState(() {
+            _isAppBarCollapsed = false;
+          });
+        }
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
   Widget _buildCategoryChip(String label, int index) {
+    // ... (code không đổi)
     bool isSelected = _selectedCategoryIndex == index;
     return GestureDetector(
       onTap: () {
@@ -46,9 +81,15 @@ class _HomePageState extends State<HomePage> {
           color: isSelected ? _primaryColor : Colors.white,
           borderRadius: BorderRadius.circular(25),
           border: isSelected ? null : Border.all(color: Colors.grey[300]!),
-          boxShadow: !isSelected ? [
-            BoxShadow(color: Colors.grey.withOpacity(0.1), spreadRadius: 1, blurRadius: 3, offset: Offset(0,1))
-          ] : [],
+          boxShadow: !isSelected
+              ? [
+            BoxShadow(
+                color: Colors.grey.withOpacity(0.1),
+                spreadRadius: 1,
+                blurRadius: 3,
+                offset: Offset(0, 1))
+          ]
+              : [],
         ),
         child: Text(
           label,
@@ -63,6 +104,7 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildProductCard(BuildContext context, String name, String cal, String price, String imageEmoji) {
+    // ... (code không đổi)
     return GestureDetector(
       onTap: () {
         widget.onNavigateToProductDetails(name, imageEmoji);
@@ -80,23 +122,27 @@ class _HomePageState extends State<HomePage> {
                 child: Center(
                   child: Container(
                     padding: EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      // color: Colors.primaries[Random().nextInt(Colors.primaries.length)].withOpacity(0.1),
-                      // borderRadius: BorderRadius.circular(10)
-                    ),
-                    child: Text(imageEmoji, style: TextStyle(fontSize: 50)), // Placeholder
+                    child: Text(imageEmoji, style: TextStyle(fontSize: 50)),
                   ),
                 ),
               ),
               SizedBox(height: 10),
-              Text(name, style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87)),
+              Text(name,
+                  style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87)),
               SizedBox(height: 4),
               Text(cal, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
               SizedBox(height: 10),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(price, style: TextStyle(fontSize: 15, color: Theme.of(context).hintColor, fontWeight: FontWeight.bold)),
+                  Text(price,
+                      style: TextStyle(
+                          fontSize: 15,
+                          color: Theme.of(context).hintColor,
+                          fontWeight: FontWeight.bold)),
                   Container(
                     padding: EdgeInsets.all(5),
                     decoration: BoxDecoration(
@@ -116,86 +162,140 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
+    // Chiều cao của BottomNavBar, bạn cần lấy giá trị này từ MainNavigationScreen
+    // hoặc định nghĩa một hằng số chung. Tạm thời dùng giá trị cố định.
+    const double bottomNavBarHeight = kBottomNavigationBarHeight + 20.0; // Ví dụ
+    const double bodyBorderRadius = 30.0;
+
+    return CustomScrollView(
+      controller: _scrollController,
       physics: BouncingScrollPhysics(),
-      padding: EdgeInsets.fromLTRB(16.0, 24.0, 16.0, 20.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+      slivers: <Widget>[
+        SliverAppBar(
+          backgroundColor: Theme.of(context).scaffoldBackgroundColor, // Màu nền của AppBar khi thu gọn
+          expandedHeight: 160.0, // Chiều cao khi mở rộng (chứa "Daily Grocery Food")
+          pinned: true, // Ghim AppBar lại khi cuộn
+          elevation: _isAppBarCollapsed ? 2.0 : 0.0, // Thêm shadow khi thu gọn
+          automaticallyImplyLeading: false, // Tắt nút back mặc định
+          flexibleSpace: FlexibleSpaceBar(
+            // titlePadding: EdgeInsets.zero, // Bỏ padding mặc định của title
+            background: Padding( // Phần header lớn
+              padding: const EdgeInsets.only(left: 16.0, right: 16.0, top: 40.0, bottom: 10.0), // Điều chỉnh padding
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: CrossAxisAlignment.end, // Căn cuối để gần với phần content
                 children: [
-                  Text(
-                    "Daily",
-                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.w300, color: Colors.black54),
+                  Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        "Daily",
+                        style: TextStyle(fontSize: 22, fontWeight: FontWeight.w300, color: Colors.black54),
+                      ),
+                      Text(
+                        "Grocery Food",
+                        style: TextStyle(fontSize: 30, fontWeight: FontWeight.bold, color: Colors.black87, height: 1.2),
+                      ),
+                    ],
                   ),
-                  Text(
-                    "Grocery Food",
-                    style: TextStyle(fontSize: 30, fontWeight: FontWeight.bold, color: Colors.black87, height: 1.2),
-                  ),
+                  // Icon tìm kiếm sẽ hiển thị trong actions khi thu gọn
                 ],
               ),
-              IconButton(
-                icon: Icon(Icons.search, size: 30, color: Colors.black54),
-                onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Search Tapped")));
-                },
-              ),
-            ],
+            ),
+            // Phần title này sẽ chỉ hiển thị khi AppBar thu gọn đáng kể (nếu có)
+            // Bạn có thể để trống hoặc hiển thị một tiêu đề nhỏ hơn
+            title: _isAppBarCollapsed
+                ? Text(
+              "Grocery Food",
+              style: TextStyle(fontSize: 18, color: Colors.black87, fontWeight: FontWeight.bold),
+            )
+                : null, // Để trống khi chưa thu gọn hẳn
+            centerTitle: true, // Căn giữa title thu gọn
           ),
-          SizedBox(height: 25),
-          Text("Categories", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87)),
-          SizedBox(height: 12),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            physics: BouncingScrollPhysics(),
-            child: Row(
-              children: _categories.asMap().entries.map((entry) {
-                int idx = entry.key;
-                Map<String, String> category = entry.value;
-                return _buildCategoryChip(category['name']!, idx);
-              }).toList(),
+          actions: <Widget>[ // Actions sẽ luôn hiển thị
+            IconButton(
+              icon: Icon(Icons.search, size: 28, color: Colors.black54),
+              onPressed: () {
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Search Tapped")));
+              },
+            ),
+            SizedBox(width: 8),
+          ],
+        ),
+
+        // Phần Categories
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.only(top: 20.0, left: 16.0, right: 16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text("Categories", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87)),
+                SizedBox(height: 12),
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  physics: BouncingScrollPhysics(),
+                  child: Row(
+                    children: _categories.asMap().entries.map((entry) {
+                      int idx = entry.key;
+                      Map<String, String> category = entry.value;
+                      return _buildCategoryChip(category['name']!, idx);
+                    }).toList(),
+                  ),
+                ),
+                SizedBox(height: 30),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      "Popular ${_categories[_selectedCategoryIndex]['name']}",
+                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black87),
+                    ),
+                    TextButton(
+                      onPressed: () {},
+                      child: Text("See all", style: TextStyle(color: Theme.of(context).hintColor, fontWeight: FontWeight.w500)),
+                    ),
+                  ],
+                ),
+                SizedBox(height: 15),
+              ],
             ),
           ),
-          SizedBox(height: 30),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                "Popular ${_categories[_selectedCategoryIndex]['name']}",
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black87),
-              ),
-              TextButton(
-                onPressed: () {},
-                child: Text("See all", style: TextStyle(color: Theme.of(context).hintColor, fontWeight: FontWeight.w500)),
-              ),
-            ],
+        ),
+
+        // Lưới sản phẩm
+        SliverPadding(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0),
+          sliver: SliverGrid(
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              mainAxisSpacing: 15,
+              crossAxisSpacing: 15,
+              childAspectRatio: 0.72,
+            ),
+            delegate: SliverChildBuilderDelegate(
+                  (BuildContext context, int index) {
+                final product = _products[index];
+                return _buildProductCard(
+                  context,
+                  product['name']!,
+                  product['cal']!,
+                  product['price']!,
+                  product['image']!,
+                );
+              },
+              childCount: _products.length,
+            ),
           ),
-          SizedBox(height: 15),
-          GridView.count(
-            crossAxisCount: 2,
-            shrinkWrap: true,
-            physics: NeverScrollableScrollPhysics(),
-            mainAxisSpacing: 15,
-            crossAxisSpacing: 15,
-            childAspectRatio: 0.72,
-            children: _products.map((product) {
-              return _buildProductCard(
-                context,
-                product['name']!,
-                product['cal']!,
-                product['price']!,
-                product['image']!,
-              );
-            }).toList(),
-          ),
-          SizedBox(height: 20),
-        ],
-      ),
+        ),
+
+        // Padding ở dưới cùng để không bị che bởi BottomNavigationBar
+        // (cần tính toán chính xác dựa trên chiều cao NavBar và bo góc của body)
+        SliverToBoxAdapter(
+          child: SizedBox(height: bottomNavBarHeight + bodyBorderRadius + MediaQuery.of(context).padding.bottom + 20),
+        ),
+      ],
     );
   }
 }
