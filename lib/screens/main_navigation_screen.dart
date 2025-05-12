@@ -50,7 +50,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   @override
   Widget build(BuildContext context) {
     // Chiều cao mong muốn cho BottomNavigationBar (bao gồm cả phần padding bạn muốn thêm)
-    final double desiredNavBarHeight = kBottomNavigationBarHeight + 20.0; // Ví dụ: tăng thêm 20px
+    final double desiredNavBarHeight = kBottomNavigationBarHeight + 30.0;
 
     return Scaffold(
       backgroundColor: _scaffoldAndNavBarColor, // Màu nền chung
@@ -87,7 +87,6 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
                 ),
               ),
             ),
-            // ĐẶT BOTTOMNAVBAR Ở ĐÂY, KHÔNG DÙNG THUỘC TÍNH bottomNavigationBar CỦA SCAFFOLD
             Container(
               height: desiredNavBarHeight + MediaQuery.of(context).padding.bottom, // Thêm padding bottom của safe area
               padding: EdgeInsets.only(bottom: MediaQuery.of(context).padding.bottom), // Đảm bảo icon không bị che
